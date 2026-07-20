@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>10-Agent Operations Dashboard</title>
+  <meta name="theme-color" content="#0f172a">
+  <meta name="description" content="One-person $1B AI Agent Operations Dashboard">
+
+  <!-- Embedded Web App Manifest for PWA Installation -->
+  <link rel="manifest" href='data:application/manifest+json,{"name":"10-Agent Operations Dashboard","short_name":"AgentDash","start_url":".","display":"standalone","background_color":"#0f172a","theme_color":"#0f172a","icons":[{"src":"https://fav.farm/🤖","sizes":"192x192","type":"image/png"}]}'>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: #0f172a; color: #f8fafc; padding: 20px; min-height: 100vh; }
+    
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; border-bottom: 1px solid #334155; padding-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+    h1 { font-size: 1.5rem; font-weight: 700; color: #38bdf8; display: flex; align-items: center; gap: 8px; }
+    
+    .status-badge { background-color: #064e3b; color: #34d399; font-size: 0.8rem; padding: 4px 10px; border-radius: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+    .status-dot { width: 8px; height: 8px; background-color: #34d399; border-radius: 50%; animation: pulse 2s infinite; }
+
+    /* Metrics Grid */
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .metric-card { background-color: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 16px; }
+    .metric-title { font-size: 0.85rem; color: #94a3b8; margin-bottom: 6px; }
+    .metric-value { font-size: 1.5rem; font-weight: 700; color: #f8fafc; }
+
+    /* Controls Bar */
+    .controls { display: flex; gap: 16px; margin-bottom: 24px; align-items: center; flex-wrap: wrap; background-color: #1e293b; padding: 16px; border-radius: 12px; border: 1px solid #334155; }
+    .btn { background-color: #0284c7; color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s; font-size: 0.9rem; }
+    .btn:hover { background-color: #0369a1; }
+    .slider-group { display: flex; align-items: center; gap: 10px; color: #94a3b8; font-size: 0.9rem; }
+    input[type="range"] { accent-color: #0284c7; cursor: pointer; }
+
+    /* Agent Cards */
+    .agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .agent-card { background-color: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; }
+    .agent-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .agent-name { font-weight: 600; font-size: 1rem; color: #e2e8f0; }
+    .agent-state { font-size: 0.75rem; color: #94a3b8; background: #0f172a; padding: 2px 8px; border-radius: 6px; }
+    
+    /* Optimized GPU Progress Bar */
+    .progress-track { width: 100%; height: 8px; background-color: #334155; overflow: hidden; border-radius: 4px; margin: 12px 0; }
+    .progress-fill { width: 100%; height: 100%; background-color: #38bdf8; transform-origin: left center; transform: scaleX(0); will-change: transform; transition: transform 0.05s linear; }
+
+    .agent-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 0.8rem; color: #64748b; }
+    .btn-sm { background: #334155; color: #e2e8f0; border: none; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; }
+    .btn-sm:hover { background: #475569; }
+
+    /* Console Terminal Log */
+    .console { background-color: #020617; border: 1px solid #334155; border-radius: 12px; padding: 16px; font-family: monospace; font-size: 0.85rem; height: 160px; overflow-y: auto; color: #38bdf8; }
+    .log-line { margin-bottom: 6px; display: flex; gap: 8px; }
+    .log-time { color: #64748b; }
+
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>⚡ 10-Agent Operations Dashboard</h1>
+    <div class="status-badge">
+      <span class="status-dot"></span> System Live (10/10 Agents Ready)
+    </div>
+  </header>
+
+  <!-- Key Performance Metrics -->
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-title">System Health</div>
+      <div class="metric-value" style="color: #34d399;">99.8%</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-title">Active Throughput</div>
+      <div class="metric-value" id="throughput-metric">1.2k tok/s</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-title">Tasks Completed</div>
+      <div class="metric-value" id="tasks-metric">142</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-title">Success Rate</div>
+      <div class="metric-value">99.1%</div>
+    </div>
+  </div>
+
+  <!-- Global Controls -->
+  <div class="controls">
+    <button class="btn" id="run-batch-btn">▶ Trigger Batch Run (All Agents)</button>
+    <div class="slider-group">
+      <label for="speed-slider">Workload Speed:</label>
+      <input type="range" id="speed-slider" min="1" max="5" value="2">
+      <span id="speed-label">2x</span>
+    </div>
+  </div>
+
+  <!-- 10 Agent Cards Grid -->
+  <div class="agent-grid" id="agent-container"></div>
+
+  <!-- Execution Console -->
+  <div class="console" id="console-log">
+    <div class="log-line"><span class="log-time">[00:00:00]</span> Operations pipeline initialized. Ready for execution stream.</div>
+  </div>
+
+  <script>
+    // -----------------------------------------------------------------
+    // 1. ProgressBatcher Engine (Zero-Reflow GPU Animation Scheduler)
+    // -----------------------------------------------------------------
+    class ProgressBatcher {
+      constructor() {
+        this.pendingUpdates = new Map();
+        this.renderedValues = new Map();
+        this.elements = new Map();
+        this.isScheduled = false;
+        this.render = this.render.bind(this);
+      }
+
+      register(id, element) {
+        this.elements.set(id, element);
+        this.renderedValues.set(id, -1);
+      }
+
+      update(id, value) {
+        const normalized = Math.min(Math.max(value / 100, 0), 1);
+        this.pendingUpdates.set(id, normalized);
+
+        if (!this.isScheduled) {
+          this.isScheduled = true;
+          requestAnimationFrame(this.render);
+        }
+      }
+
+      render() {
+        for (const [id, value] of this.pendingUpdates) {
+          const currentVal = this.renderedValues.get(id);
+          if (Math.abs(currentVal - value) > 0.001) {
+            const el = this.elements.get(id);
+            if (el) {
+              el.style.transform = `scaleX(${value})`;
+              this.renderedValues.set(id, value);
+            }
+          }
+        }
+        this.pendingUpdates.clear();
+        this.isScheduled = false;
+      }
+    }
+
+    const batcher = new ProgressBatcher();
+
+    // -----------------------------------------------------------------
+    // 2. Agent Data & UI Renderer
+    // -----------------------------------------------------------------
+    const agents = [
+      { id: 'agent-1', name: '1. Business Brain', desc: 'SOPs & Memory Context' },
+      { id: 'agent-2', name: '2. Leads Agent', desc: 'Prospecting & Sourcing' },
+      { id: 'agent-3', name: '3. Research Agent', desc: 'Market Pattern Spotting' },
+      { id: 'agent-4', name: '4. Docs Agent', desc: 'Memory & Documentation' },
+      { id: 'agent-5', name: '5. Ads Agent', desc: 'Creative Ad Scaling' },
+      { id: 'agent-6', name: '6. Content Agent', desc: 'Idea to Post Pipeline' },
+      { id: 'agent-7', name: '7. Sales Agent', desc: 'Outreach & Follow-ups' },
+      { id: 'agent-8', name: '8. Product Agent', desc: 'Feedback to Roadmap' },
+      { id: 'agent-9', name: '9. Ops Agent', desc: 'Process File Generation' },
+      { id: 'agent-10', name: '10. Review Agent', desc: 'Pre-Ship Quality Check' }
+    ];
+
+    const agentContainer = document.getElementById('agent-container');
+    const consoleLog = document.getElementById('console-log');
+    let totalTasksCompleted = 142;
+
+    // Render cards dynamically
+    agents.forEach(agent => {
+      const card = document.createElement('div');
+      card.className = 'agent-card';
+      card.innerHTML = `
+        <div class="agent-header">
+          <span class="agent-name">${agent.name}</span>
+          <span class="agent-state" id="state-${agent.id}">IDLE</span>
+        </div>
+        <div style="font-size: 0.8rem; color: #94a3b8;">${agent.desc}</div>
+        <div class="progress-track">
+          <div class="progress-fill" id="bar-${agent.id}" role="progressbar"></div>
+        </div>
+        <div class="agent-footer">
+          <span id="speed-${agent.id}">0.0s</span>
+          <button class="btn-sm" onclick="runSingleAgent('${agent.id}', '${agent.name}')">Run Task</button>
+        </div>
+      `;
+      agentContainer.appendChild(card);
+
+      // Register with batcher engine
+      const barEl = card.querySelector(`#bar-${agent.id}`);
+      batcher.register(agent.id, barEl);
+    });
+
+    // -----------------------------------------------------------------
+    // 3. Execution & Simulation Handlers
+    // -----------------------------------------------------------------
+    function logEvent(msg) {
+      const time = new Date().toTimeString().split(' ')[0];
+      const line = document.createElement('div');
+      line.className = 'log-line';
+      line.innerHTML = `<span class="log-time">[${time}]</span> ${msg}`;
+      consoleLog.appendChild(line);
+      consoleLog.scrollTop = consoleLog.scrollHeight;
+    }
+
+    function runSingleAgent(id, name) {
+      const speedMultiplier = parseInt(document.getElementById('speed-slider').value);
+      const stateEl = document.getElementById(`state-${id}`);
+      stateEl.innerText = 'EXECUTING';
+      stateEl.style.color = '#38bdf8';
+
+      logEvent(`<strong>${name}</strong> started task execution...`);
+
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += (Math.random() * 4 + 2) * speedMultiplier;
+        batcher.update(id, progress);
+
+        if (progress >= 100) {
+          batcher.update(id, 100);
+          clearInterval(interval);
+          stateEl.innerText = 'DONE';
+          stateEl.style.color = '#34d399';
+          
+          totalTasksCompleted++;
+          document.getElementById('tasks-metric').innerText = totalTasksCompleted;
+          logEvent(`<strong>${name}</strong> finished task successfully.`);
+
+          setTimeout(() => {
+            batcher.update(id, 0);
+            stateEl.innerText = 'IDLE';
+            stateEl.style.color = '#94a3b8';
+          }, 1500);
+        }
+      }, 30);
+    }
+
+    // Trigger batch run
+    document.getElementById('run-batch-btn').addEventListener('click', () => {
+      logEvent(`⚡ <strong>Batch Execution Triggered:</strong> Running all 10 Agents in parallel.`);
+      agents.forEach((agent, idx) => {
+        setTimeout(() => {
+          runSingleAgent(agent.id, agent.name);
+        }, idx * 150);
+      });
+    });
+
+    // Speed slider listener
+    const speedSlider = document.getElementById('speed-slider');
+    speedSlider.addEventListener('input', (e) => {
+      document.getElementById('speed-label').innerText = `${e.target.value}x`;
+    });
+
+    // -----------------------------------------------------------------
+    // 4. Inline Service Worker Registration (PWA Installation Support)
+    // -----------------------------------------------------------------
+    if ('serviceWorker' in navigator) {
+      const swCode = `
+        self.addEventListener('install', (e) => self.skipWaiting());
+        self.addEventListener('activate', (e) => self.clients.claim());
+        self.addEventListener('fetch', (e) => {
+          e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+        });
+      `;
+      const blob = new Blob([swCode], { type: 'application/javascript' });
+      navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+    }
+  </script>
+</body>
+</html>
